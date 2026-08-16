@@ -1,12 +1,3 @@
-local plr = game.Players.LocalPlayer
-
--- Проверка наличия торговой лицензии
-local tradeLicense = require(game.ReplicatedStorage.SharedModules.TradeLicenseHelper)
-if not tradeLicense.player_has_trade_license() then
-    plr:Kick("Данные фейк-трейды работают только на основных аккаунтах.")
-    return
-end
-
 -- Проверка типа сервера
 if game:GetService("RobloxReplicatedStorage"):WaitForChild("GetServerType"):InvokeServer() == "VIPServer" then
     plr:Kick("Ошибка сервера. Возможно вы на VIP-Сервере")
