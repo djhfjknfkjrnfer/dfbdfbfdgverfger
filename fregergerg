@@ -1,0 +1,1272 @@
+--[[
+AuroraUI Library + Reaver Compatibility
+Rayfield-like Roblox UI Library
+All branding and logo replaced with 🗿 (Moai).
+Compatible with Reaver API (CreateLib, NewTab, NewSection, NewButton, ...)
+]]
+
+local AuroraUI = {}
+AuroraUI.__index = AuroraUI
+
+--// Utility & Theme
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+local Theme = {
+    Font = Enum.Font.Gotham,
+    FontBold = Enum.Font.GothamBold,
+    Background = Color3.fromRGB(22, 22, 22),
+    Accent = Color3.fromRGB(0, 192, 255),
+    Accent2 = Color3.fromRGB(16, 121, 255),
+    Border = Color3.fromRGB(32, 32, 32),
+    Section = Color3.fromRGB(28, 28, 28),
+    Contrast = Color3.fromRGB(32, 32, 32),
+    Text = Color3.fromRGB(235, 235, 235),
+    Placeholder = Color3.fromRGB(140, 140, 140),
+    Success = Color3.fromRGB(0,200,80),
+    Warning = Color3.fromRGB(240,200,0),
+    Danger = Color3.fromRGB(240,60,60),
+    Glow = Color3.fromRGB(0, 205, 255),
+    Shadow = Color3.fromRGB(0,0,0),
+    Label = Color3.fromRGB(192,192,192),
+    Scrollbar = Color3.fromRGB(50,50,50),
+}
+
+AuroraUI.Theme = Theme
+
+local function deepCopy(t)
+    if type(t) ~= "table" then return t end
+    local nt = {}
+    for k,v in pairs(t) do
+        nt[k] = deepCopy(v)
+    end
+    return nt
+end
+
+local function Animate(obj, goal, time, style, dir)
+    local tw = TweenService:Create(obj, TweenInfo.new(time or 0.18, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), goal)
+    tw:Play()
+    return tw
+end
+
+local function MoaiLogo(parent)
+    local logo = Instance.new("TextLabel")
+    logo.Name = "MoaiLogo"
+    logo.Text = "🗿"
+    logo.Font = Theme.FontBold
+    logo.TextSize = 34
+    logo.TextColor3 = Theme.Accent
+    logo.BackgroundTransparency = 1
+    logo.Size = UDim2.new(0, 44, 0, 44)
+    logo.Position = UDim2.new(0, 12, 0, 8)
+    logo.Parent = parent
+    return logo
+end
+
+local function EnableDragResize(frame, dragbar)
+    local dragActive, dragInput, dragStart, startPos
+    dragbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragActive = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragActive = false
+                end
+            end)
+        end
+    end)
+    dragbar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragActive then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+--// Main New()
+function AuroraUI.New(config)
+    config = config or {}
+    local self = setmetatable({}, AuroraUI)
+    self.Name = config.Name or "AuroraUI"
+    self.LoadTitle = config.LoadingTitle or "AuroraUI"
+    self.LoadSubtitle = config.LoadingSubtitle or "🗿"
+    self.ConfigurationSaving = config.ConfigurationSaving or { Enabled = false }
+    self.Theme = deepCopy(Theme)
+    self._tabs = {}
+    self._sections = {}
+    self._elements = {}
+    self._values = {}
+    self._callbacks = {}
+    self._config = {}
+    self.Flags = {}
+    self.Animations = true
+
+    local Player = Players.LocalPlayer
+    local PlayerGui = Player:FindFirstChildOfClass("PlayerGui") or Player:WaitForChild("PlayerGui")
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "AuroraUI_"..tostring(math.random(10000,99999))
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    ScreenGui.Parent = PlayerGui
+    self._ScreenGui = ScreenGui
+
+    local Window = Instance.new("Frame")
+    Window.Name = "Window"
+    Window.Size = UDim2.new(0, 600, 0, 430)
+    Window.Position = UDim2.new(0.5, -300, 0.5, -215)
+    Window.BackgroundColor3 = self.Theme.Background
+    Window.BorderSizePixel = 0
+    Window.AnchorPoint = Vector2.new(0.5,0.5)
+    Window.ClipsDescendants = true
+    Window.Parent = ScreenGui
+    self._Window = Window
+
+    local Shadow = Instance.new("ImageLabel")
+    Shadow.Name = "Shadow"
+    Shadow.Image = "rbxassetid://1316045217"
+    Shadow.Size = UDim2.new(1, 56, 1, 56)
+    Shadow.Position = UDim2.new(0, -28, 0, -28)
+    Shadow.BackgroundTransparency = 1
+    Shadow.ImageTransparency = 0.68
+    Shadow.ZIndex = 0
+    Shadow.Parent = Window
+
+    local TopBar = Instance.new("Frame")
+    TopBar.Name = "TopBar"
+    TopBar.Size = UDim2.new(1, 0, 0, 54)
+    TopBar.BackgroundColor3 = self.Theme.Section
+    TopBar.BorderSizePixel = 0
+    TopBar.Parent = Window
+    self._TopBar = TopBar
+
+    MoaiLogo(TopBar)
+
+    local Title = Instance.new("TextLabel")
+    Title.Name = "Title"
+    Title.Text = self.Name
+    Title.Font = self.Theme.FontBold
+    Title.TextColor3 = self.Theme.Text
+    Title.TextSize = 24
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 62, 0, 12)
+    Title.Size = UDim2.new(1, -72, 0, 30)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Parent = TopBar
+
+    local AccentBar = Instance.new("Frame")
+    AccentBar.Name = "AccentBar"
+    AccentBar.Size = UDim2.new(1, 0, 0, 3)
+    AccentBar.Position = UDim2.new(0,0,1,-3)
+    AccentBar.BackgroundColor3 = self.Theme.Accent
+    AccentBar.BorderSizePixel = 0
+    AccentBar.Parent = TopBar
+
+    local TabBar = Instance.new("Frame")
+    TabBar.Name = "TabBar"
+    TabBar.Size = UDim2.new(0, 134, 1, -54)
+    TabBar.Position = UDim2.new(0, 0, 0, 54)
+    TabBar.BackgroundColor3 = self.Theme.Section
+    TabBar.BorderSizePixel = 0
+    TabBar.Parent = Window
+    self._TabBar = TabBar
+
+    local TabList = Instance.new("UIListLayout")
+    TabList.Name = "TabList"
+    TabList.SortOrder = Enum.SortOrder.LayoutOrder
+    TabList.Padding = UDim.new(0, 6)
+    TabList.Parent = TabBar
+
+    local TabContainer = Instance.new("Frame")
+    TabContainer.Name = "TabContainer"
+    TabContainer.Size = UDim2.new(1, -134, 1, -54)
+    TabContainer.Position = UDim2.new(0, 134, 0, 54)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.ClipsDescendants = true
+    TabContainer.Parent = Window
+    self._TabContainer = TabContainer
+
+    EnableDragResize(Window, TopBar)
+
+    return self
+end
+
+--// TAB
+function AuroraUI:CreateTab(tabinfo)
+    tabinfo = tabinfo or {}
+    local tabName = tabinfo.Name or ("Tab"..#self._tabs+1)
+    local tabIcon = tabinfo.Icon or "🗿"
+    local isDefault = tabinfo.Default or false
+
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Name = "TabButton_"..tabName
+    TabBtn.Text = tabIcon.."  "..tabName
+    TabBtn.Font = self.Theme.FontBold
+    TabBtn.TextColor3 = self.Theme.Text
+    TabBtn.TextSize = 18
+    TabBtn.BackgroundColor3 = self.Theme.Section
+    TabBtn.Size = UDim2.new(1, -12, 0, 40)
+    TabBtn.Position = UDim2.new(0, 6, 0, 0)
+    TabBtn.AutoButtonColor = false
+    TabBtn.BorderSizePixel = 0
+    TabBtn.Parent = self._TabBar
+
+    local TabFrame = Instance.new("Frame")
+    TabFrame.Name = "TabFrame_"..tabName
+    TabFrame.Size = UDim2.new(1, 0, 1, 0)
+    TabFrame.BackgroundTransparency = 1
+    TabFrame.Visible = false
+    TabFrame.Parent = self._TabContainer
+
+    local SectionHolder = Instance.new("Frame")
+    SectionHolder.Name = "SectionHolder"
+    SectionHolder.Size = UDim2.new(1, -20, 1, -20)
+    SectionHolder.Position = UDim2.new(0, 10, 0, 10)
+    SectionHolder.BackgroundTransparency = 1
+    SectionHolder.Parent = TabFrame
+
+    local SectionLayout = Instance.new("UIListLayout")
+    SectionLayout.Padding = UDim.new(0, 15)
+    SectionLayout.FillDirection = Enum.FillDirection.Horizontal
+    SectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    SectionLayout.Parent = SectionHolder
+
+    TabBtn.MouseButton1Click:Connect(function()
+        for _, v in ipairs(self._tabs) do
+            v._TabBtn.BackgroundColor3 = self.Theme.Section
+            v._TabBtn.TextColor3 = self.Theme.Text
+            v._TabFrame.Visible = false
+        end
+        TabBtn.BackgroundColor3 = self.Theme.Accent
+        TabBtn.TextColor3 = Color3.new(1,1,1)
+        TabFrame.Visible = true
+    end)
+
+    if isDefault or #self._tabs == 0 then
+        TabBtn.BackgroundColor3 = self.Theme.Accent
+        TabBtn.TextColor3 = Color3.new(1,1,1)
+        TabFrame.Visible = true
+    end
+
+    local tabObj = {
+        _TabBtn = TabBtn,
+        _TabFrame = TabFrame,
+        _SectionHolder = SectionHolder,
+        _SectionLayout = SectionLayout,
+        _sections = {},
+        _elements = {},
+        Name = tabName,
+        Icon = tabIcon,
+        ParentUI = self
+    }
+
+    --// SECTION
+    function tabObj:CreateSection(sectioninfo)
+        sectioninfo = sectioninfo or {}
+        local sectionName = sectioninfo.Name or ("Section"..#tabObj._sections+1)
+
+        local SectionFrame = Instance.new("Frame")
+        SectionFrame.Name = "Section_"..sectionName
+        SectionFrame.Size = UDim2.new(0, 270, 0, 0)
+        SectionFrame.AutomaticSize = Enum.AutomaticSize.Y
+        SectionFrame.BackgroundColor3 = self.ParentUI.Theme.Section
+        SectionFrame.BorderSizePixel = 0
+        SectionFrame.ClipsDescendants = true
+        SectionFrame.Parent = tabObj._SectionHolder
+
+        local SectionTitle = Instance.new("TextLabel")
+        SectionTitle.Name = "SectionTitle"
+        SectionTitle.Text = sectionName
+        SectionTitle.Font = self.ParentUI.Theme.FontBold
+        SectionTitle.TextColor3 = self.ParentUI.Theme.Text
+        SectionTitle.TextSize = 18
+        SectionTitle.BackgroundTransparency = 1
+        SectionTitle.Size = UDim2.new(1, -24, 0, 22)
+        SectionTitle.Position = UDim2.new(0, 12, 0, 10)
+        SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+        SectionTitle.Parent = SectionFrame
+
+        local ElementHolder = Instance.new("Frame")
+        ElementHolder.Name = "ElementHolder"
+        ElementHolder.Size = UDim2.new(1, 0, 0, 0)
+        ElementHolder.AutomaticSize = Enum.AutomaticSize.Y
+        ElementHolder.Position = UDim2.new(0, 0, 0, 34)
+        ElementHolder.BackgroundTransparency = 1
+        ElementHolder.Parent = SectionFrame
+
+        local ElementLayout = Instance.new("UIListLayout")
+        ElementLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        ElementLayout.Padding = UDim.new(0, 8)
+        ElementLayout.Parent = ElementHolder
+
+        local ElementPadding = Instance.new("UIPadding")
+        ElementPadding.PaddingBottom = UDim.new(0, 10)
+        ElementPadding.Parent = ElementHolder
+
+        local sectionObj = {
+            _SectionFrame = SectionFrame,
+            _SectionTitle = SectionTitle,
+            _ElementHolder = ElementHolder,
+            _ElementLayout = ElementLayout,
+            _elements = {},
+            Name = sectionName,
+            ParentTab = tabObj,
+            ParentUI = self.ParentUI
+        }
+
+        tabObj._sections[#tabObj._sections+1] = sectionObj
+
+        --// BUTTON
+        function sectionObj:CreateButton(buttoninfo)
+            buttoninfo = buttoninfo or {}
+            local btnName = buttoninfo.Name or ("Button"..#sectionObj._elements+1)
+            local btnDesc = buttoninfo.Description or ""
+            local btnIcon = buttoninfo.Icon or ""
+            local btnCallback = buttoninfo.Callback or function() end
+
+            local BtnFrame = Instance.new("Frame")
+            BtnFrame.Name = "Button_"..btnName
+            BtnFrame.Size = UDim2.new(1, 0, 0, 38)
+            BtnFrame.BackgroundColor3 = self.ParentUI.Theme.Contrast
+            BtnFrame.BackgroundTransparency = 0.14
+            BtnFrame.BorderSizePixel = 0
+            BtnFrame.Parent = sectionObj._ElementHolder
+
+            if btnIcon ~= "" then
+                local Icon = Instance.new("TextLabel")
+                Icon.Text = btnIcon
+                Icon.Font = self.ParentUI.Theme.FontBold
+                Icon.TextSize = 18
+                Icon.TextColor3 = self.ParentUI.Theme.Accent
+                Icon.BackgroundTransparency = 1
+                Icon.Size = UDim2.new(0, 28, 1, 0)
+                Icon.Position = UDim2.new(0, 6, 0, 0)
+                Icon.Parent = BtnFrame
+            end
+
+            local BtnLabel = Instance.new("TextButton")
+            BtnLabel.Text = btnName
+            BtnLabel.Font = self.ParentUI.Theme.FontBold
+            BtnLabel.TextSize = 16
+            BtnLabel.TextColor3 = self.ParentUI.Theme.Text
+            BtnLabel.BackgroundTransparency = 1
+            BtnLabel.Size = UDim2.new(1, btnIcon~="" and -34 or -12, 1, 0)
+            BtnLabel.Position = UDim2.new(0, btnIcon~="" and 32 or 8, 0, 0)
+            BtnLabel.TextXAlignment = Enum.TextXAlignment.Left
+            BtnLabel.AutoButtonColor = true
+            BtnLabel.Parent = BtnFrame
+
+            BtnLabel.MouseEnter:Connect(function()
+                Animate(BtnFrame, {BackgroundTransparency = 0.08}, 0.14)
+            end)
+            BtnLabel.MouseLeave:Connect(function()
+                Animate(BtnFrame, {BackgroundTransparency = 0.14}, 0.14)
+            end)
+
+            BtnLabel.MouseButton1Click:Connect(function()
+                Animate(BtnFrame, {BackgroundColor3 = self.ParentUI.Theme.Accent}, 0.14)
+                task.wait(0.09)
+                Animate(BtnFrame, {BackgroundColor3 = self.ParentUI.Theme.Contrast}, 0.14)
+                task.spawn(btnCallback)
+            end)
+
+            local el = {
+                Type = "Button",
+                Name = btnName,
+                Frame = BtnFrame,
+                Callback = btnCallback,
+                SetLocked = function() end,
+                Destroy = function() BtnFrame:Destroy() end
+            }
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        --// TOGGLE
+        function sectionObj:CreateToggle(toggleinfo)
+            toggleinfo = toggleinfo or {}
+            local togName = toggleinfo.Name or ("Toggle"..#sectionObj._elements+1)
+            local togDesc = toggleinfo.Description or ""
+            local default = toggleinfo.Default or false
+            local togCallback = toggleinfo.Callback or function() end
+            local flag = toggleinfo.Flag
+
+            local TogFrame = Instance.new("Frame")
+            TogFrame.Name = "Toggle_"..togName
+            TogFrame.Size = UDim2.new(1, 0, 0, 38)
+            TogFrame.BackgroundColor3 = self.ParentUI.Theme.Contrast
+            TogFrame.BackgroundTransparency = 0.14
+            TogFrame.BorderSizePixel = 0
+            TogFrame.Parent = sectionObj._ElementHolder
+
+            local Box = Instance.new("TextButton")
+            Box.Name = "Box"
+            Box.Text = default and "✔" or ""
+            Box.Font = self.ParentUI.Theme.FontBold
+            Box.TextColor3 = self.ParentUI.Theme.Accent
+            Box.TextSize = 18
+            Box.Size = UDim2.new(0, 28, 0, 28)
+            Box.Position = UDim2.new(0, 6, 0, 5)
+            Box.BackgroundColor3 = Color3.fromRGB(24,24,24)
+            Box.BorderSizePixel = 0
+            Box.AutoButtonColor = true
+            Box.Parent = TogFrame
+
+            local TogLabel = Instance.new("TextButton")
+            TogLabel.Text = togName
+            TogLabel.Font = self.ParentUI.Theme.FontBold
+            TogLabel.TextSize = 16
+            TogLabel.TextColor3 = self.ParentUI.Theme.Text
+            TogLabel.BackgroundTransparency = 1
+            TogLabel.Size = UDim2.new(1, -42, 1, 0)
+            TogLabel.Position = UDim2.new(0, 40, 0, 0)
+            TogLabel.TextXAlignment = Enum.TextXAlignment.Left
+            TogLabel.AutoButtonColor = true
+            TogLabel.Parent = TogFrame
+
+            local state = default
+            local function setToggle(val)
+                state = val
+                Box.Text = (val and "✔" or "")
+                togCallback(val)
+            end
+            setToggle(default)
+
+            Box.MouseButton1Click:Connect(function() setToggle(not state) end)
+            TogLabel.MouseButton1Click:Connect(function() setToggle(not state) end)
+
+            local el = {
+                Type = "Toggle", Name = togName, Frame = TogFrame,
+                Callback = togCallback, CurrentValue = default,
+                Set = setToggle, Value = function() return state end,
+                SetLocked = function() end, Destroy = function() TogFrame:Destroy() end
+            }
+            if flag then self.ParentUI.Flags[flag] = el end
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        --// SLIDER
+        function sectionObj:CreateSlider(sliderinfo)
+            sliderinfo = sliderinfo or {}
+            local sliderName = sliderinfo.Name or ("Slider"..#sectionObj._elements+1)
+            local sliderDesc = sliderinfo.Description or ""
+            local range = sliderinfo.Range or {0, 100}
+            local min = range[1] or 0
+            local max = range[2] or 100
+            local increment = sliderinfo.Increment or 1
+            local default = sliderinfo.Default or min
+            local suffix = sliderinfo.Suffix or ""
+            local sliderCallback = sliderinfo.Callback or function() end
+            local flag = sliderinfo.Flag
+
+            local SliderFrame = Instance.new("Frame")
+            SliderFrame.Name = "Slider_"..sliderName
+            SliderFrame.Size = UDim2.new(1, 0, 0, 48)
+            SliderFrame.BackgroundColor3 = self.ParentUI.Theme.Contrast
+            SliderFrame.BackgroundTransparency = 0.14
+            SliderFrame.BorderSizePixel = 0
+            SliderFrame.Parent = sectionObj._ElementHolder
+
+            local SliderLabel = Instance.new("TextLabel")
+            SliderLabel.Text = sliderName.." : "..tostring(default)..suffix
+            SliderLabel.Font = self.ParentUI.Theme.FontBold
+            SliderLabel.TextSize = 15
+            SliderLabel.TextColor3 = self.ParentUI.Theme.Text
+            SliderLabel.BackgroundTransparency = 1
+            SliderLabel.Size = UDim2.new(1, -14, 0, 20)
+            SliderLabel.Position = UDim2.new(0, 8, 0, 4)
+            SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+            SliderLabel.Parent = SliderFrame
+
+            local Bar = Instance.new("Frame")
+            Bar.Name = "Bar"
+            Bar.Size = UDim2.new(1, -32, 0, 8)
+            Bar.Position = UDim2.new(0, 16, 0, 28)
+            Bar.BackgroundColor3 = Color3.fromRGB(70,70,70)
+            Bar.BorderSizePixel = 0
+            Bar.Parent = SliderFrame
+
+            local Fill = Instance.new("Frame")
+            Fill.Name = "Fill"
+            Fill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
+            Fill.BackgroundColor3 = self.ParentUI.Theme.Accent
+            Fill.BorderSizePixel = 0
+            Fill.Parent = Bar
+
+            local dragging = false
+            local current = default
+            local function setSlider(val)
+                val = math.clamp(val, min, max)
+                val = math.floor(val / increment + 0.5) * increment
+                local percent = (val-min)/(max-min)
+                Fill.Size = UDim2.new(percent, 0, 1, 0)
+                SliderLabel.Text = sliderName.." : "..tostring(val)..suffix
+                current = val
+                if self.ParentUI.Flags and flag then
+                    self.ParentUI.Flags[flag].CurrentValue = val
+                end
+                sliderCallback(val)
+            end
+            setSlider(default)
+
+            Bar.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+                    local mx = UserInputService:GetMouseLocation().X
+                    local bx = Bar.AbsolutePosition.X
+                    local bw = Bar.AbsoluteSize.X
+                    local val = min + (max-min)*((mx-bx)/bw)
+                    setSlider(val)
+                end
+            end)
+            Bar.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                end
+            end)
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    local mx = UserInputService:GetMouseLocation().X
+                    local bx = Bar.AbsolutePosition.X
+                    local bw = Bar.AbsoluteSize.X
+                    local val = min + (max-min)*((mx-bx)/bw)
+                    setSlider(val)
+                end
+            end)
+
+            local el = {
+                Type = "Slider", Name = sliderName, Frame = SliderFrame,
+                Callback = sliderCallback, CurrentValue = default,
+                Value = function() return current end, Set = setSlider,
+                SetLocked = function() end, Destroy = function() SliderFrame:Destroy() end
+            }
+            if flag then self.ParentUI.Flags[flag] = el end
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+        --// DROPDOWN
+        function sectionObj:CreateDropdown(dropinfo)
+            dropinfo = dropinfo or {}
+            local dropName = dropinfo.Name or ("Dropdown"..#sectionObj._elements+1)
+            local dropDesc = dropinfo.Description or ""
+            local options = dropinfo.Options or {}
+            local currentOpt = dropinfo.CurrentOption or dropinfo.Default
+            local dropCallback = dropinfo.Callback or function() end
+            local multiSelect = dropinfo.MultipleOptions or dropinfo.MultiSelect or false
+            local flag = dropinfo.Flag
+
+            local selected = {}
+            if type(currentOpt) == "table" then
+                for _, v in ipairs(currentOpt) do selected[v] = true end
+            elseif currentOpt ~= nil then
+                selected[currentOpt] = true
+            end
+
+            local function getSelectedArray()
+                local arr = {}
+                for k, v in pairs(selected) do
+                    if v then table.insert(arr, k) end
+                end
+                return arr
+            end
+
+            local function displayText()
+                local arr = getSelectedArray()
+                if #arr == 0 then return "None" end
+                return table.concat(arr, ", ")
+            end
+
+            local DropFrame = Instance.new("Frame")
+            DropFrame.Name = "Dropdown_"..dropName
+            DropFrame.Size = UDim2.new(1, 0, 0, 38)
+            DropFrame.BackgroundColor3 = self.ParentUI.Theme.Contrast
+            DropFrame.BackgroundTransparency = 0.14
+            DropFrame.BorderSizePixel = 0
+            DropFrame.ClipsDescendants = false
+            DropFrame.Parent = sectionObj._ElementHolder
+
+            local DropBtn = Instance.new("TextButton")
+            DropBtn.Text = dropName.." : "..displayText()
+            DropBtn.Font = self.ParentUI.Theme.FontBold
+            DropBtn.TextSize = 16
+            DropBtn.TextColor3 = self.ParentUI.Theme.Text
+            DropBtn.BackgroundTransparency = 1
+            DropBtn.Size = UDim2.new(1, -32, 1, 0)
+            DropBtn.Position = UDim2.new(0, 8, 0, 0)
+            DropBtn.TextXAlignment = Enum.TextXAlignment.Left
+            DropBtn.AutoButtonColor = true
+            DropBtn.Parent = DropFrame
+
+            local ListFrame = Instance.new("Frame")
+            ListFrame.Name = "DropdownList"
+            ListFrame.Visible = false
+            ListFrame.Size = UDim2.new(1, 0, 0, math.min(#options, 6)*32)
+            ListFrame.Position = UDim2.new(0,0,1,0)
+            ListFrame.BackgroundColor3 = self.ParentUI.Theme.Section
+            ListFrame.BorderSizePixel = 0
+            ListFrame.ZIndex = 20
+            ListFrame.Parent = DropFrame
+
+            local ListScroll = Instance.new("ScrollingFrame")
+            ListScroll.Size = UDim2.new(1, 0, 1, 0)
+            ListScroll.BackgroundTransparency = 1
+            ListScroll.BorderSizePixel = 0
+            ListScroll.ScrollBarThickness = 4
+            ListScroll.ScrollBarImageColor3 = self.ParentUI.Theme.Scrollbar
+            ListScroll.CanvasSize = UDim2.new(0, 0, 0, #options*32)
+            ListScroll.ZIndex = 21
+            ListScroll.Parent = ListFrame
+
+            local ListLayout = Instance.new("UIListLayout")
+            ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            ListLayout.Parent = ListScroll
+
+            for i, opt in ipairs(options) do
+                local OptBtn = Instance.new("TextButton")
+                OptBtn.Text = "  "..tostring(opt)
+                OptBtn.Font = self.ParentUI.Theme.Font
+                OptBtn.TextSize = 15
+                OptBtn.TextColor3 = selected[opt] and self.ParentUI.Theme.Accent or self.ParentUI.Theme.Text
+                OptBtn.BackgroundTransparency = 1
+                OptBtn.Size = UDim2.new(1, 0, 0, 32)
+                OptBtn.TextXAlignment = Enum.TextXAlignment.Left
+                OptBtn.Parent = ListScroll
+                OptBtn.ZIndex = 22
+
+                OptBtn.MouseButton1Click:Connect(function()
+                    if multiSelect then
+                        selected[opt] = not selected[opt]
+                        OptBtn.TextColor3 = selected[opt] and self.ParentUI.Theme.Accent or self.ParentUI.Theme.Text
+                    else
+                        for k in pairs(selected) do selected[k] = nil end
+                        selected[opt] = true
+                        for _, v in ipairs(ListScroll:GetChildren()) do
+                            if v:IsA("TextButton") then
+                                v.TextColor3 = (v.Text:gsub("^%s+","") == tostring(opt)) and self.ParentUI.Theme.Accent or self.ParentUI.Theme.Text
+                            end
+                        end
+                        ListFrame.Visible = false
+                    end
+                    DropBtn.Text = dropName.." : "..displayText()
+                    local arr = getSelectedArray()
+                    dropCallback(arr)
+                end)
+            end
+
+            DropBtn.MouseButton1Click:Connect(function()
+                ListFrame.Visible = not ListFrame.Visible
+            end)
+
+            local el = {
+                Type = "Dropdown", Name = dropName, Frame = DropFrame,
+                Callback = dropCallback, CurrentValue = getSelectedArray(),
+                Refresh = function(newOptions)
+                    for _, v in ipairs(ListScroll:GetChildren()) do
+                        if v:IsA("TextButton") then v:Destroy() end
+                    end
+                    options = newOptions or {}
+                    for i, opt in ipairs(options) do
+                        local OptBtn = Instance.new("TextButton")
+                        OptBtn.Text = "  "..tostring(opt)
+                        OptBtn.Font = self.ParentUI.Theme.Font
+                        OptBtn.TextSize = 15
+                        OptBtn.TextColor3 = selected[opt] and self.ParentUI.Theme.Accent or self.ParentUI.Theme.Text
+                        OptBtn.BackgroundTransparency = 1
+                        OptBtn.Size = UDim2.new(1, 0, 0, 32)
+                        OptBtn.TextXAlignment = Enum.TextXAlignment.Left
+                        OptBtn.Parent = ListScroll
+                        OptBtn.ZIndex = 22
+                        OptBtn.MouseButton1Click:Connect(function()
+                            if multiSelect then
+                                selected[opt] = not selected[opt]
+                                OptBtn.TextColor3 = selected[opt] and self.ParentUI.Theme.Accent or self.ParentUI.Theme.Text
+                            else
+                                for k in pairs(selected) do selected[k] = nil end
+                                selected[opt] = true
+                                ListFrame.Visible = false
+                            end
+                            DropBtn.Text = dropName.." : "..displayText()
+                            dropCallback(getSelectedArray())
+                        end)
+                    end
+                    ListScroll.CanvasSize = UDim2.new(0, 0, 0, #options*32)
+                end,
+                Set = function(val)
+                    for k in pairs(selected) do selected[k] = nil end
+                    if type(val) == "table" then
+                        for _, v in ipairs(val) do selected[v] = true end
+                    elseif val ~= nil then
+                        selected[val] = true
+                    end
+                    DropBtn.Text = dropName.." : "..displayText()
+                    dropCallback(getSelectedArray())
+                end,
+                SetLocked = function() end,
+                Destroy = function() DropFrame:Destroy() end
+            }
+            if flag then self.ParentUI.Flags[flag] = el end
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        --// INPUT (TextBox)
+        function sectionObj:CreateInput(inputinfo)
+            inputinfo = inputinfo or {}
+            local inputName = inputinfo.Name or ("Input"..#sectionObj._elements+1)
+            local inputDesc = inputinfo.Description or ""
+            local default = inputinfo.Default or ""
+            local placeholder = inputinfo.PlaceholderText or inputName
+            local removeText = inputinfo.RemoveTextAfterFocusLost or false
+            local inputCallback = inputinfo.Callback or function() end
+            local flag = inputinfo.Flag
+
+            local InputFrame = Instance.new("Frame")
+            InputFrame.Name = "Input_"..inputName
+            InputFrame.Size = UDim2.new(1, 0, 0, 38)
+            InputFrame.BackgroundColor3 = self.ParentUI.Theme.Contrast
+            InputFrame.BackgroundTransparency = 0.14
+            InputFrame.BorderSizePixel = 0
+            InputFrame.Parent = sectionObj._ElementHolder
+
+            local Box = Instance.new("TextBox")
+            Box.Text = default
+            Box.PlaceholderText = placeholder
+            Box.Font = self.ParentUI.Theme.Font
+            Box.TextColor3 = self.ParentUI.Theme.Text
+            Box.PlaceholderColor3 = self.ParentUI.Theme.Placeholder
+            Box.TextSize = 15
+            Box.BackgroundTransparency = 0.05
+            Box.BackgroundColor3 = Color3.fromRGB(26,26,26)
+            Box.Size = UDim2.new(1, -16, 1, -10)
+            Box.Position = UDim2.new(0, 8, 0, 5)
+            Box.ClearTextOnFocus = false
+            Box.Parent = InputFrame
+
+            Box.FocusLost:Connect(function(enter)
+                if enter then
+                    inputCallback(Box.Text)
+                    if removeText then Box.Text = "" end
+                end
+            end)
+
+            local el = {
+                Type = "Input", Name = inputName, Frame = InputFrame,
+                Callback = inputCallback, CurrentValue = default,
+                Value = function() return Box.Text end,
+                Set = function(val) Box.Text = val end,
+                SetLocked = function() end,
+                Destroy = function() InputFrame:Destroy() end
+            }
+            if flag then self.ParentUI.Flags[flag] = el end
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        --// KEYBIND
+        function sectionObj:CreateKeybind(bindinfo)
+            bindinfo = bindinfo or {}
+            local keyName = bindinfo.Name or ("Keybind"..#sectionObj._elements+1)
+            local keyDesc = bindinfo.Description or ""
+            local default = bindinfo.CurrentKeybind or bindinfo.Default or "F"
+            if type(default) == "string" then
+                local ok, kc = pcall(function() return Enum.KeyCode[default] end)
+                default = ok and kc or Enum.KeyCode.F
+            end
+            local holdToInteract = bindinfo.HoldToInteract or false
+            local keyCallback = bindinfo.Callback or function() end
+            local changedCallback = bindinfo.ChangedCallback or function() end
+            local flag = bindinfo.Flag
+
+            local BindFrame = Instance.new("Frame")
+            BindFrame.Name = "Keybind_"..keyName
+            BindFrame.Size = UDim2.new(1, 0, 0, 38)
+            BindFrame.BackgroundColor3 = self.ParentUI.Theme.Contrast
+            BindFrame.BackgroundTransparency = 0.14
+            BindFrame.BorderSizePixel = 0
+            BindFrame.Parent = sectionObj._ElementHolder
+
+            local BindLabel = Instance.new("TextButton")
+            BindLabel.Text = keyName.." : "..tostring(default.Name)
+            BindLabel.Font = self.ParentUI.Theme.FontBold
+            BindLabel.TextSize = 16
+            BindLabel.TextColor3 = self.ParentUI.Theme.Text
+            BindLabel.BackgroundTransparency = 1
+            BindLabel.Size = UDim2.new(1, -16, 1, 0)
+            BindLabel.Position = UDim2.new(0, 8, 0, 0)
+            BindLabel.TextXAlignment = Enum.TextXAlignment.Left
+            BindLabel.AutoButtonColor = true
+            BindLabel.Parent = BindFrame
+
+            local current = default
+
+            BindLabel.MouseButton1Click:Connect(function()
+                BindLabel.Text = keyName.." : [Press Key]"
+                local connection
+                connection = UserInputService.InputBegan:Connect(function(input, processed)
+                    if not processed and input.UserInputType == Enum.UserInputType.Keyboard then
+                        current = input.KeyCode
+                        BindLabel.Text = keyName.." : "..tostring(current.Name)
+                        keyCallback(current)
+                        changedCallback(current.Name)
+                        connection:Disconnect()
+                    end
+                end)
+            end)
+
+            -- Активация по нажатию
+            UserInputService.InputBegan:Connect(function(input, processed)
+                if processed then return end
+                if input.KeyCode == current and not holdToInteract then
+                    keyCallback(current)
+                end
+            end)
+            if holdToInteract then
+                UserInputService.InputBegan:Connect(function(input, processed)
+                    if processed then return end
+                    if input.KeyCode == current then keyCallback(true) end
+                end)
+                UserInputService.InputEnded:Connect(function(input)
+                    if input.KeyCode == current then keyCallback(false) end
+                end)
+            end
+
+            local el = {
+                Type = "Keybind", Name = keyName, Frame = BindFrame,
+                Callback = keyCallback, CurrentValue = current,
+                Value = function() return current end,
+                Set = function(val)
+                    current = val
+                    BindLabel.Text = keyName.." : "..tostring(current.Name)
+                    changedCallback(current.Name)
+                end,
+                SetLocked = function() end,
+                Destroy = function() BindFrame:Destroy() end
+            }
+            if flag then self.ParentUI.Flags[flag] = el end
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        --// LABEL
+        function sectionObj:CreateLabel(labelinfo)
+            local lblName = type(labelinfo) == "table" and (labelinfo.Name or "") or tostring(labelinfo or "")
+
+            local LabelFrame = Instance.new("Frame")
+            LabelFrame.Name = "Label_"..lblName
+            LabelFrame.Size = UDim2.new(1, 0, 0, 30)
+            LabelFrame.BackgroundTransparency = 1
+            LabelFrame.BorderSizePixel = 0
+            LabelFrame.Parent = sectionObj._ElementHolder
+
+            local Label = Instance.new("TextLabel")
+            Label.Text = lblName
+            Label.Font = self.ParentUI.Theme.Font
+            Label.TextSize = 14
+            Label.TextColor3 = self.ParentUI.Theme.Label
+            Label.BackgroundTransparency = 1
+            Label.Size = UDim2.new(1, -12, 1, 0)
+            Label.Position = UDim2.new(0, 6, 0, 0)
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = LabelFrame
+
+            local el = {Type = "Label", Name = lblName, Frame = LabelFrame,
+                Set = function(txt) Label.Text = tostring(txt) end,
+                SetLocked = function() end, Destroy = function() LabelFrame:Destroy() end}
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        --// PARAGRAPH
+        function sectionObj:CreateParagraph(pinfo)
+            pinfo = pinfo or {}
+            local pTitle = pinfo.Title or ""
+            local pContent = pinfo.Content or ""
+
+            local PFrame = Instance.new("Frame")
+            PFrame.Name = "Paragraph"
+            PFrame.Size = UDim2.new(1, 0, 0, 60)
+            PFrame.AutomaticSize = Enum.AutomaticSize.Y
+            PFrame.BackgroundColor3 = self.ParentUI.Theme.Contrast
+            PFrame.BackgroundTransparency = 0.3
+            PFrame.BorderSizePixel = 0
+            PFrame.Parent = sectionObj._ElementHolder
+
+            local PTitleLbl = Instance.new("TextLabel")
+            PTitleLbl.Text = pTitle
+            PTitleLbl.Font = self.ParentUI.Theme.FontBold
+            PTitleLbl.TextSize = 15
+            PTitleLbl.TextColor3 = self.ParentUI.Theme.Text
+            PTitleLbl.BackgroundTransparency = 1
+            PTitleLbl.Size = UDim2.new(1, -20, 0, 20)
+            PTitleLbl.Position = UDim2.new(0, 10, 0, 6)
+            PTitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+            PTitleLbl.Parent = PFrame
+
+            local PContentLbl = Instance.new("TextLabel")
+            PContentLbl.Text = pContent
+            PContentLbl.Font = self.ParentUI.Theme.Font
+            PContentLbl.TextSize = 13
+            PContentLbl.TextWrapped = true
+            PContentLbl.TextColor3 = self.ParentUI.Theme.Placeholder
+            PContentLbl.BackgroundTransparency = 1
+            PContentLbl.Size = UDim2.new(1, -20, 0, 0)
+            PContentLbl.AutomaticSize = Enum.AutomaticSize.Y
+            PContentLbl.Position = UDim2.new(0, 10, 0, 28)
+            PContentLbl.TextXAlignment = Enum.TextXAlignment.Left
+            PContentLbl.TextYAlignment = Enum.TextYAlignment.Top
+            PContentLbl.Parent = PFrame
+
+            local el = {Type = "Paragraph", Frame = PFrame,
+                Set = function(t) PContentLbl.Text = tostring(t) end,
+                SetLocked = function() end, Destroy = function() PFrame:Destroy() end}
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        --// DIVIDER
+        function sectionObj:CreateDivider()
+            local Sep = Instance.new("Frame")
+            Sep.Name = "Divider"
+            Sep.Size = UDim2.new(1, -16, 0, 2)
+            Sep.Position = UDim2.new(0, 8, 0, 0)
+            Sep.BackgroundColor3 = self.ParentUI.Theme.Border
+            Sep.BackgroundTransparency = 0.2
+            Sep.BorderSizePixel = 0
+            Sep.Parent = sectionObj._ElementHolder
+            sectionObj._elements[#sectionObj._elements+1] = {Type="Divider", Frame=Sep,
+                SetLocked = function() end, Destroy = function() Sep:Destroy() end}
+            return Sep
+        end
+
+        --// COLOR PICKER
+        function sectionObj:CreateColorPicker(cpinfo)
+            cpinfo = cpinfo or {}
+            local cpName = cpinfo.Name or ("ColorPicker"..#sectionObj._elements+1)
+            local cpDesc = cpinfo.Description or ""
+            local default = cpinfo.Color or cpinfo.Default or Color3.fromRGB(255,255,255)
+            local cpCallback = cpinfo.Callback or function() end
+            local flag = cpinfo.Flag
+
+            local CPFrame = Instance.new("Frame")
+            CPFrame.Name = "ColorPicker_"..cpName
+            CPFrame.Size = UDim2.new(1, 0, 0, 38)
+            CPFrame.BackgroundColor3 = self.ParentUI.Theme.Contrast
+            CPFrame.BackgroundTransparency = 0.14
+            CPFrame.BorderSizePixel = 0
+            CPFrame.Parent = sectionObj._ElementHolder
+
+            local CPLabel = Instance.new("TextLabel")
+            CPLabel.Text = cpName
+            CPLabel.Font = self.ParentUI.Theme.FontBold
+            CPLabel.TextSize = 16
+            CPLabel.TextColor3 = self.ParentUI.Theme.Text
+            CPLabel.BackgroundTransparency = 1
+            CPLabel.Size = UDim2.new(1, -48, 1, 0)
+            CPLabel.Position = UDim2.new(0, 8, 0, 0)
+            CPLabel.TextXAlignment = Enum.TextXAlignment.Left
+            CPLabel.Parent = CPFrame
+
+            local ColorBtn = Instance.new("TextButton")
+            ColorBtn.Size = UDim2.new(0, 34, 0, 28)
+            ColorBtn.Position = UDim2.new(1, -38, 0, 5)
+            ColorBtn.BackgroundColor3 = default
+            ColorBtn.BorderSizePixel = 0
+            ColorBtn.Text = ""
+            ColorBtn.Parent = CPFrame
+
+            local current = default
+            ColorBtn.MouseButton1Click:Connect(function()
+                local c = Color3.fromRGB(math.random(0,255),math.random(0,255),math.random(0,255))
+                current = c
+                ColorBtn.BackgroundColor3 = c
+                cpCallback(c)
+            end)
+
+            local el = {
+                Type = "ColorPicker", Name = cpName, Frame = CPFrame,
+                Callback = cpCallback, CurrentValue = default,
+                Value = function() return current end,
+                Set = function(val)
+                    current = val
+                    ColorBtn.BackgroundColor3 = val
+                    cpCallback(val)
+                end,
+                SetLocked = function() end,
+                Destroy = function() CPFrame:Destroy() end
+            }
+            if flag then self.ParentUI.Flags[flag] = el end
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        --// BUTTON GROUP
+        function sectionObj:CreateButtonGroup(groupinfo)
+            groupinfo = groupinfo or {}
+            local buttons = groupinfo.Buttons or {}
+            local GroupFrame = Instance.new("Frame")
+            GroupFrame.Name = "ButtonGroup"
+            GroupFrame.Size = UDim2.new(1, 0, 0, 38)
+            GroupFrame.BackgroundTransparency = 1
+            GroupFrame.Parent = sectionObj._ElementHolder
+
+            local GroupLayout = Instance.new("UIListLayout")
+            GroupLayout.FillDirection = Enum.FillDirection.Horizontal
+            GroupLayout.Padding = UDim.new(0, 6)
+            GroupLayout.Parent = GroupFrame
+
+            for _, btnData in ipairs(buttons) do
+                local Btn = Instance.new("TextButton")
+                Btn.Text = btnData.Text or "Button"
+                Btn.Font = self.ParentUI.Theme.FontBold
+                Btn.TextSize = 14
+                Btn.TextColor3 = self.ParentUI.Theme.Text
+                Btn.BackgroundColor3 = btnData.Primary and self.ParentUI.Theme.Accent or self.ParentUI.Theme.Contrast
+                Btn.BorderSizePixel = 0
+                Btn.Size = UDim2.new(1/#buttons, -4, 1, 0)
+                Btn.AutoButtonColor = true
+                Btn.Parent = GroupFrame
+                Btn.MouseButton1Click:Connect(function()
+                    if btnData.Callback then task.spawn(btnData.Callback) end
+                end)
+            end
+
+            local el = {Type = "ButtonGroup", Frame = GroupFrame,
+                SetLocked = function() end, Destroy = function() GroupFrame:Destroy() end}
+            sectionObj._elements[#sectionObj._elements+1] = el
+            return el
+        end
+
+        return sectionObj
+    end
+
+    self._tabs[#self._tabs+1] = tabObj
+    return tabObj
+end
+
+--------------------------------------------------------------------------------
+-- NOTIFICATION
+--------------------------------------------------------------------------------
+function AuroraUI:Notify(opts)
+    opts = opts or {}
+    local title = opts.Title or "AuroraUI"
+    local content = opts.Content or ""
+    local duration = opts.Duration or 3
+    local ntype = opts.Type or "info"
+
+    local NotificationGui = self._ScreenGui:FindFirstChild("AuroraUINotification") or Instance.new("ScreenGui")
+    NotificationGui.Name = "AuroraUINotification"
+    NotificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    NotificationGui.IgnoreGuiInset = true
+    NotificationGui.Parent = self._ScreenGui
+    NotificationGui.ResetOnSpawn = false
+
+    local NotiFrame = Instance.new("Frame")
+    NotiFrame.Name = "Notification"
+    NotiFrame.AnchorPoint = Vector2.new(1,1)
+    NotiFrame.Size = UDim2.new(0, 320, 0, 90)
+    NotiFrame.Position = UDim2.new(1, 400, 1, -24)
+    NotiFrame.BackgroundColor3 = (ntype=="success" and self.Theme.Success) or (ntype=="error" and self.Theme.Danger) or (ntype=="warning" and self.Theme.Warning) or self.Theme.Section
+    NotiFrame.BackgroundTransparency = 0.09
+    NotiFrame.BorderSizePixel = 0
+    NotiFrame.ZIndex = 100
+    NotiFrame.Parent = NotificationGui
+
+    local NotiTitle = Instance.new("TextLabel")
+    NotiTitle.Text = "🗿 "..title
+    NotiTitle.Font = self.Theme.FontBold
+    NotiTitle.TextSize = 18
+    NotiTitle.TextColor3 = Color3.new(1,1,1)
+    NotiTitle.BackgroundTransparency = 1
+    NotiTitle.Size = UDim2.new(1, -20, 0, 26)
+    NotiTitle.Position = UDim2.new(0, 10, 0, 6)
+    NotiTitle.TextXAlignment = Enum.TextXAlignment.Left
+    NotiTitle.ZIndex = 101
+    NotiTitle.Parent = NotiFrame
+
+    local NotiContent = Instance.new("TextLabel")
+    NotiContent.Text = content
+    NotiContent.Font = self.Theme.Font
+    NotiContent.TextSize = 15
+    NotiContent.TextWrapped = true
+    NotiContent.TextColor3 = self.Theme.Text
+    NotiContent.BackgroundTransparency = 1
+    NotiContent.Size = UDim2.new(1, -20, 1, -36)
+    NotiContent.Position = UDim2.new(0, 10, 0, 32)
+    NotiContent.TextXAlignment = Enum.TextXAlignment.Left
+    NotiContent.TextYAlignment = Enum.TextYAlignment.Top
+    NotiContent.ZIndex = 101
+    NotiContent.Parent = NotiFrame
+
+    Animate(NotiFrame, {Position = UDim2.new(1, -24, 1, -24)}, 0.24)
+
+    task.spawn(function()
+        task.wait(duration)
+        Animate(NotiFrame, {Position = UDim2.new(1, 400, 1, -24)}, 0.24)
+        task.wait(0.24)
+        NotiFrame:Destroy()
+        if #NotificationGui:GetChildren() == 0 then NotificationGui:Destroy() end
+    end)
+
+    return {Dismiss = function() NotiFrame:Destroy() end, Destroy = function() NotiFrame:Destroy() end}
+end
+
+--------------------------------------------------------------------------------
+-- CONFIG
+--------------------------------------------------------------------------------
+function AuroraUI:SaveConfig(name)
+    name = name or "Default"
+    self._config[name] = {}
+    for _, tab in ipairs(self._tabs) do
+        for _, section in ipairs(tab._sections) do
+            for _, el in ipairs(section._elements) do
+                if el.Value then
+                    self._config[name][el.Name] = el.Value()
+                end
+            end
+        end
+    end
+    self:Notify{Title="Config", Content="Config '"..name.."' saved.", Type="success"}
+end
+
+function AuroraUI:LoadConfig(name)
+    name = name or "Default"
+    if not self._config[name] then
+        self:Notify{Title="Config", Content="No config named '"..name.."'.", Type="error"}
+        return
+    end
+    for _, tab in ipairs(self._tabs) do
+        for _, section in ipairs(tab._sections) do
+            for _, el in ipairs(section._elements) do
+                if el.Set and self._config[name][el.Name] ~= nil then
+                    el.Set(self._config[name][el.Name])
+                end
+            end
+        end
+    end
+    self:Notify{Title="Config", Content="Config '"..name.."' loaded.", Type="success"}
+end
+
+function AuroraUI:SetTheme(tbl)
+    for k,v in pairs(tbl) do
+        if self.Theme[k] ~= nil then self.Theme[k] = v end
+    end
+end
+
+function AuroraUI:SetPreset(name)
+    -- Заглушка
+end
+
+function AuroraUI:SetNotifySide(side)
+    -- Заглушка
+end
+
+function AuroraUI:SetFont(font, weights)
+    -- Заглушка
+end
+
+function AuroraUI:Destroy()
+    if self._ScreenGui then self._ScreenGui:Destroy() end
+end
+
+--------------------------------------------------------------------------------
+-- REAVER COMPATIBILITY API
+--------------------------------------------------------------------------------
+
+-- Library:CreateLib(name, theme)
+function AuroraUI.CreateLib(name, theme)
+    local window = AuroraUI.New({Name = name or "Reaver"})
+    local LibWrapper = {}
+
+    function LibWrapper:NewTab(tabName)
+        local Tab = window:CreateTab({Name = tabName or "Tab", Icon = "🗿"})
+        local TabWrapper = {}
+
+        function TabWrapper:NewSection(sectionName)
+            local Section = Tab:CreateSection({Name = sectionName or "Section"})
+            local SecWrapper = {}
+
+            function SecWrapper:NewButton(n, d, cb)
+                return Section:CreateButton({Name = n, Description = d, Callback = cb})
+            end
+            function SecWrapper:NewToggle(n, d, cb)
+                return Section:CreateToggle({Name = n, Description = d, Default = false, Callback = cb})
+            end
+            function SecWrapper:NewSlider(n, d, maxVal, minVal, cb)
+                return Section:CreateSlider({
+                    Name = n, Description = d,
+                    Range = {minVal or 0, maxVal or 100},
+                    Default = minVal or 0,
+                    Callback = cb
+                })
+            end
+            function SecWrapper:NewDropdown(n, options, cb)
+                return Section:CreateDropdown({
+                    Name = n, Options = options or {},
+                    MultipleOptions = false,
+                    Callback = function(arr)
+                        local v = type(arr) == "table" and arr[1] or arr
+                        if cb then cb(v) end
+                    end
+                })
+            end
+            function SecWrapper:NewTextBox(n, d, cb)
+                return Section:CreateInput({Name = n, Description = d, PlaceholderText = d or "...", Callback = cb})
+            end
+            function SecWrapper:NewKeybind(n, d, key, cb)
+                return Section:CreateKeybind({Name = n, Description = d, CurrentKeybind = key, Callback = cb})
+            end
+            function SecWrapper:NewLabel(txt)
+                return Section:CreateLabel(tostring(txt or ""))
+            end
+            function SecWrapper:NewParagraph(txt)
+                return Section:CreateParagraph({Title = "", Content = tostring(txt or "")})
+            end
+            function SecWrapper:NewDivider()
+                return Section:CreateDivider()
+            end
+            function SecWrapper:NewColorPicker(n, color, cb)
+                return Section:CreateColorPicker({Name = n, Color = color, Callback = cb})
+            end
+            function SecWrapper:NewButtonGroup(opts)
+                return Section:CreateButtonGroup(opts)
+            end
+
+            return SecWrapper
+        end
+
+        return TabWrapper
+    end
+
+    function LibWrapper:Notify(opts)
+        if type(opts) == "string" then opts = {Title="Reaver", Content=opts, Duration=3} end
+        return window:Notify(opts)
+    end
+
+    function LibWrapper:SetTheme(tbl) return window:SetTheme(tbl) end
+    function LibWrapper:SetPreset(n) return window:SetPreset(n) end
+    function LibWrapper:SaveConfiguration() return window:SaveConfig() end
+    function LibWrapper:LoadConfiguration() return window:LoadConfig() end
+    function LibWrapper:Destroy() return window:Destroy() end
+
+    LibWrapper.Flags = window.Flags
+    LibWrapper.Theme = window.Theme
+    LibWrapper.Animations = true
+
+    return LibWrapper
+end
+
+-- Глобальный экспорт
+return AuroraUI
